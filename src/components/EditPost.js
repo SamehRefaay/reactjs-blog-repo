@@ -1,37 +1,39 @@
-import React, { useContext, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import api from '../api/posts';
-import DataContext from '../context/DataContext';
+import { useStoreActions, useStoreState } from 'easy-peasy';
 
 const EditPost = () => {
-	const { id } = useParams();
 	const navigate = useNavigate();
-	const { posts, setPosts } = useContext(DataContext);
+	const { id } = useParams();
 
-	const post = posts.find(post => post.id.toString() === id);
+	const editTitle = useStoreState(state => state.editTitle);
+	const editBody = useStoreState(state => state.editBody);
 
-	const [editTitle, setEditTitle] = useState(post.title);
-	const [editBody, setEditBody] = useState(post.body);
+	const editPost = useStoreActions(actions => actions.editPost);
+	const setEditTitle = useStoreActions(actions => actions.setEditTitle);
+	const setEditBody = useStoreActions(actions => actions.setEditBody);
 
-	const handleEdit = async (id, updatedTitle, updatedBody) => {
+	const getPostById = useStoreState(state => state.getPostById);
+	const post = getPostById(id);
+
+	useEffect(() => {
+		if (post) {
+			setEditTitle(post.title);
+			setEditBody(post.body);
+		}
+	}, [post, setEditTitle, setEditBody]);
+
+	const handleEdit = async id => {
 		const datetime = format(new Date(), 'MMMM dd, yyyy pp');
 		const updatedPost = {
 			id,
-			title: updatedTitle,
+			title: editTitle,
 			datetime,
-			body: updatedBody,
+			body: editBody,
 		};
-		try {
-			const response = await api.put(`/posts/${id}`, updatedPost);
-			const updatedPosts = posts.map(post =>
-				post.id === id ? { ...response.data } : post
-			);
-			setPosts(updatedPosts);
-			navigate('/');
-		} catch (error) {
-			console.log(`Error: ${error.message}`);
-		}
+		editPost(updatedPost);
+		navigate(`/posts/${id}`);
 	};
 
 	return (
@@ -60,10 +62,7 @@ const EditPost = () => {
 						/>
 					</div>
 					<div className="form-group">
-						<button
-							type="submit"
-							onClick={() => handleEdit(post.id, editTitle, editBody)}
-						>
+						<button type="submit" onClick={() => handleEdit(post.id)}>
 							Submit
 						</button>
 					</div>
